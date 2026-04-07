@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TCC Dossieranalyse — Casemanagerformulier | TCC Verzuimspiegel</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ── TCC form page styles ── */
+
+    .tcc-header {
+      padding: var(--sp-8) 0 var(--sp-6);
+    }
+    .tcc-header__title {
+      font-size: var(--fs-3xl);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: var(--c-text);
+      margin-bottom: var(--sp-1);
+    }
+    .tcc-header__sub {
+      font-size: var(--fs-sm);
+      color: var(--c-text-3);
+    }
+
+    /* Section cards */
+    .tcc-section {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-6);
+      box-shadow: var(--sh-sm);
+      margin-bottom: var(--sp-5);
+    }
+    .tcc-section__title {
+      font-size: var(--fs-lg);
+      font-weight: 700;
+      color: var(--c-text);
+      margin-bottom: var(--sp-5);
+    }
+
+    /* Dimension cards */
+    .dim-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-left: 4px solid var(--dim-color, var(--c-primary));
+      border-radius: var(--r-lg);
+      padding: var(--sp-6);
+      box-shadow: var(--sh-sm);
+      margin-bottom: var(--sp-5);
+    }
+    .dim-card__header {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      margin-bottom: var(--sp-5);
+    }
+    .dim-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      border-radius: var(--r-full);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: var(--dim-bg, var(--c-primary-light));
+      color: var(--dim-color, var(--c-primary));
+    }
+    .dim-card__title {
+      font-size: var(--fs-lg);
+      font-weight: 700;
+      color: var(--c-text);
+    }
+
+    /* Dimension colour vars */
+    .dim--mens        { --dim-color: #3b82f6; --dim-bg: #eff6ff; }
+    .dim--gesprek     { --dim-color: #8b5cf6; --dim-bg: #f5f3ff; }
+    .dim--team        { --dim-color: #10b981; --dim-bg: #ecfdf5; }
+    .dim--organisatie { --dim-color: #f59e0b; --dim-bg: #fffbeb; }
+
+    /* Subsection labels */
+    .field-section {
+      margin-bottom: var(--sp-5);
+    }
+    .field-section:last-child { margin-bottom: 0; }
+    .field-label {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--c-text-2);
+      margin-bottom: var(--sp-3);
+      display: block;
+    }
+    .field-label .req { color: var(--c-danger); margin-left: 2px; }
+
+    /* Signal checkboxes — reuse .choice-option pattern */
+    .signals-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-2);
+    }
+    @media (max-width: 540px) { .signals-grid { grid-template-columns: 1fr; } }
+
+    /* Score pill row */
+    .score-row {
+      display: flex;
+      gap: var(--sp-2);
+      flex-wrap: wrap;
+    }
+    .score-option {
+      flex: 1;
+      min-width: 120px;
+    }
+    .score-option label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--sp-1);
+      padding: 10px var(--sp-3);
+      border: 1.5px solid var(--c-border-md);
+      border-radius: var(--r-md);
+      cursor: pointer;
+      transition: border-color var(--t), background var(--t);
+      user-select: none;
+      text-align: center;
+    }
+    .score-option label:hover {
+      border-color: var(--dim-color, var(--c-primary-ring));
+      background: var(--dim-bg, var(--c-primary-light));
+    }
+    .score-option input[type="radio"] {
+      accent-color: var(--dim-color, var(--c-primary));
+      width: 16px;
+      height: 16px;
+    }
+    .score-option:has(input:checked) label {
+      border-color: var(--dim-color, var(--c-primary));
+      background: var(--dim-bg, var(--c-primary-light));
+    }
+    .score-option .score-num {
+      font-size: var(--fs-xl);
+      font-weight: 700;
+      color: var(--dim-color, var(--c-primary));
+      line-height: 1;
+    }
+    .score-option .score-lbl {
+      font-size: var(--fs-xs);
+      color: var(--c-text-3);
+      line-height: 1.3;
+    }
+    @media (max-width: 480px) {
+      .score-row { flex-direction: column; }
+      .score-option { min-width: unset; }
+    }
+
+    /* Beslisregel callout */
+    .callout {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: var(--r-md);
+      padding: var(--sp-4);
+      font-size: var(--fs-sm);
+      color: #1e40af;
+      line-height: 1.6;
+      margin-bottom: var(--sp-5);
+    }
+    .callout__title {
+      font-weight: 700;
+      margin-bottom: var(--sp-2);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+
+    /* Basic info form groups */
+    .basic-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-4);
+    }
+    @media (max-width: 540px) { .basic-grid { grid-template-columns: 1fr; } }
+
+    /* Submit */
+    .submit-section {
+      margin-top: var(--sp-8);
+      display: flex;
+      justify-content: center;
+    }
+    .submit-section .btn--primary { min-width: 200px; }
+
+    /* Thank-you screen */
+    #thankyou-screen {
+      text-align: center;
+      padding: var(--sp-16) var(--sp-4);
+    }
+    .ty-icon {
+      width: 72px;
+      height: 72px;
+      background: var(--c-success-bg);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--sp-6);
+      animation: pop-in .4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    }
+    @keyframes pop-in { from { opacity: 0; transform: scale(.6); } to { opacity: 1; transform: scale(1); } }
+    .ty-title {
+      font-size: var(--fs-3xl);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--c-text);
+      margin-bottom: var(--sp-3);
+    }
+    .ty-sub {
+      font-size: var(--fs-base);
+      color: var(--c-text-3);
+      margin-bottom: var(--sp-8);
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .ty-actions {
+      display: flex;
+      gap: var(--sp-3);
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header" role="banner">
+    <div class="container">
+      <div class="site-header__inner">
+        <a class="site-logo" href="index.html" aria-label="TCC Verzuimspiegel home">
+          <span class="site-logo__mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </span>
+          <span class="site-logo__name">TCC Verzuimspiegel</span>
+        </a>
+        <div style="display:flex;align-items:center;gap:var(--sp-3)">
+          <a class="btn btn--ghost btn--sm" href="tcc-dashboard.html">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Dashboard
+          </a>
+          <div id="header-user" style="display:flex;align-items:center;gap:var(--sp-2)"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div class="container">
+
+      <!-- Form screen -->
+      <div id="form-screen">
+        <div class="tcc-header">
+          <h1 class="tcc-header__title">TCC Dossieranalyse</h1>
+          <p class="tcc-header__sub">Casemanagerformulier — MGTO-model</p>
+        </div>
+
+        <form id="tcc-form" novalidate>
+
+          <!-- 1. Basisinformatie -->
+          <div class="tcc-section">
+            <h2 class="tcc-section__title">Basisinformatie</h2>
+            <div class="basic-grid">
+              <div class="form-group">
+                <label class="form-label form-label--req" for="dossiernummer">Dossiernummer</label>
+                <input class="form-input" type="text" id="dossiernummer" name="dossiernummer" placeholder="bijv. DOS-2024-001" autocomplete="off">
+                <div class="form-error" data-fielderr="dossiernummer" role="alert" hidden>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                  Dit veld is verplicht
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="team">Team</label>
+                <input class="form-input" type="text" id="team" name="team" placeholder="bijv. Productie West" autocomplete="off">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:var(--sp-4)">
+              <span class="form-label form-label--req" id="type-label">Type verzuim</span>
+              <div class="choice-group" role="radiogroup" aria-labelledby="type-label">
+                <label class="choice-option">
+                  <input type="radio" name="typeVerzuim" value="kort">
+                  <span class="choice-label">Kort verzuim (≤ 7 dagen)</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="typeVerzuim" value="langdurig">
+                  <span class="choice-label">Langdurig verzuim (&gt; 7 dagen)</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="typeVerzuim" value="frequent">
+                  <span class="choice-label">Frequent verzuim</span>
+                </label>
+              </div>
+              <div class="form-error" data-fielderr="typeVerzuim" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Selecteer een type verzuim
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Mens -->
+          <div class="dim-card dim--mens">
+            <div class="dim-card__header">
+              <span class="dim-badge">M</span>
+              <h2 class="dim-card__title">Mens</h2>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Signalen (meerdere mogelijk)</span>
+              <div class="signals-grid">
+                <label class="choice-option">
+                  <input type="checkbox" name="mens_signals" value="medische_oorzaak">
+                  <span class="choice-label">Medische oorzaak</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="mens_signals" value="persoonlijke_omstandigheden">
+                  <span class="choice-label">Persoonlijke omstandigheden</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="mens_signals" value="psychische_klachten">
+                  <span class="choice-label">Psychische klachten</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="mens_signals" value="motivatie_betrokkenheid">
+                  <span class="choice-label">Motivatie / betrokkenheid</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="mens_signals" value="leefstijl_gedrag">
+                  <span class="choice-label">Leefstijl / gedrag</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="mens_signals" value="competenties_vaardigheden">
+                  <span class="choice-label">Competenties / vaardigheden</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Score <span class="req">*</span></span>
+              <div class="score-row dim--mens">
+                <div class="score-option">
+                  <input type="radio" name="mens_score" value="0" id="mens_score_0" hidden>
+                  <label for="mens_score_0">
+                    <span class="score-num">0</span>
+                    <span class="score-lbl">Speelt geen rol</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="mens_score" value="1" id="mens_score_1" hidden>
+                  <label for="mens_score_1">
+                    <span class="score-num">1</span>
+                    <span class="score-lbl">Speelt mee</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="mens_score" value="2" id="mens_score_2" hidden>
+                  <label for="mens_score_2">
+                    <span class="score-num">2</span>
+                    <span class="score-lbl">Belangrijke factor</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-error" data-fielderr="mens_score" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Geef een score op
+              </div>
+            </div>
+
+            <div class="field-section">
+              <label class="field-label" for="mens_opmerking">Opmerking</label>
+              <textarea class="form-textarea" id="mens_opmerking" name="mens_opmerking" rows="2" placeholder="Optionele toelichting…"></textarea>
+            </div>
+          </div>
+
+          <!-- 3. Gesprek -->
+          <div class="dim-card dim--gesprek">
+            <div class="dim-card__header">
+              <span class="dim-badge">G</span>
+              <h2 class="dim-card__title">Gesprek</h2>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Signalen (meerdere mogelijk)</span>
+              <div class="signals-grid">
+                <label class="choice-option">
+                  <input type="checkbox" name="gesprek_signals" value="communicatie_problemen">
+                  <span class="choice-label">Communicatieproblemen</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="gesprek_signals" value="conflicten_leidinggevende">
+                  <span class="choice-label">Conflict met leidinggevende</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="gesprek_signals" value="gebrek_aan_erkenning">
+                  <span class="choice-label">Gebrek aan erkenning</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="gesprek_signals" value="onduidelijke_verwachtingen">
+                  <span class="choice-label">Onduidelijke verwachtingen</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="gesprek_signals" value="onvoldoende_feedback">
+                  <span class="choice-label">Onvoldoende feedback</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="gesprek_signals" value="agressie_intimidatie">
+                  <span class="choice-label">Agressie / intimidatie</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Score <span class="req">*</span></span>
+              <div class="score-row dim--gesprek">
+                <div class="score-option">
+                  <input type="radio" name="gesprek_score" value="0" id="gesprek_score_0" hidden>
+                  <label for="gesprek_score_0">
+                    <span class="score-num">0</span>
+                    <span class="score-lbl">Speelt geen rol</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="gesprek_score" value="1" id="gesprek_score_1" hidden>
+                  <label for="gesprek_score_1">
+                    <span class="score-num">1</span>
+                    <span class="score-lbl">Speelt mee</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="gesprek_score" value="2" id="gesprek_score_2" hidden>
+                  <label for="gesprek_score_2">
+                    <span class="score-num">2</span>
+                    <span class="score-lbl">Belangrijke factor</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-error" data-fielderr="gesprek_score" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Geef een score op
+              </div>
+            </div>
+
+            <div class="field-section">
+              <label class="field-label" for="gesprek_opmerking">Opmerking</label>
+              <textarea class="form-textarea" id="gesprek_opmerking" name="gesprek_opmerking" rows="2" placeholder="Optionele toelichting…"></textarea>
+            </div>
+          </div>
+
+          <!-- 4. Team -->
+          <div class="dim-card dim--team">
+            <div class="dim-card__header">
+              <span class="dim-badge">T</span>
+              <h2 class="dim-card__title">Team</h2>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Signalen (meerdere mogelijk)</span>
+              <div class="signals-grid">
+                <label class="choice-option">
+                  <input type="checkbox" name="team_signals" value="teamdynamiek_problemen">
+                  <span class="choice-label">Teamdynamiekproblemen</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="team_signals" value="hoge_werkdruk_team">
+                  <span class="choice-label">Hoge werkdruk in team</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="team_signals" value="onderlinge_conflicten">
+                  <span class="choice-label">Onderlinge conflicten</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="team_signals" value="gebrek_aan_samenwerking">
+                  <span class="choice-label">Gebrek aan samenwerking</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="team_signals" value="onveilige_sfeer">
+                  <span class="choice-label">Onveilige sfeer</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="team_signals" value="pesten_uitsluiting">
+                  <span class="choice-label">Pesten / uitsluiting</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Score <span class="req">*</span></span>
+              <div class="score-row dim--team">
+                <div class="score-option">
+                  <input type="radio" name="team_score" value="0" id="team_score_0" hidden>
+                  <label for="team_score_0">
+                    <span class="score-num">0</span>
+                    <span class="score-lbl">Speelt geen rol</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="team_score" value="1" id="team_score_1" hidden>
+                  <label for="team_score_1">
+                    <span class="score-num">1</span>
+                    <span class="score-lbl">Speelt mee</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="team_score" value="2" id="team_score_2" hidden>
+                  <label for="team_score_2">
+                    <span class="score-num">2</span>
+                    <span class="score-lbl">Belangrijke factor</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-error" data-fielderr="team_score" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Geef een score op
+              </div>
+            </div>
+
+            <div class="field-section">
+              <label class="field-label" for="team_opmerking">Opmerking</label>
+              <textarea class="form-textarea" id="team_opmerking" name="team_opmerking" rows="2" placeholder="Optionele toelichting…"></textarea>
+            </div>
+          </div>
+
+          <!-- 5. Organisatie -->
+          <div class="dim-card dim--organisatie">
+            <div class="dim-card__header">
+              <span class="dim-badge">O</span>
+              <h2 class="dim-card__title">Organisatie</h2>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Signalen (meerdere mogelijk)</span>
+              <div class="signals-grid">
+                <label class="choice-option">
+                  <input type="checkbox" name="organisatie_signals" value="onduidelijk_beleid">
+                  <span class="choice-label">Onduidelijk beleid</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="organisatie_signals" value="reorganisatie_onzekerheid">
+                  <span class="choice-label">Reorganisatie / onzekerheid</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="organisatie_signals" value="arbeidsomstandigheden">
+                  <span class="choice-label">Arbeidsomstandigheden</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="organisatie_signals" value="onvoldoende_middelen">
+                  <span class="choice-label">Onvoldoende middelen</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="organisatie_signals" value="cultuur_waarden">
+                  <span class="choice-label">Cultuur / waarden</span>
+                </label>
+                <label class="choice-option">
+                  <input type="checkbox" name="organisatie_signals" value="werkbelasting_structureel">
+                  <span class="choice-label">Structurele werkbelasting</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field-section">
+              <span class="field-label">Score <span class="req">*</span></span>
+              <div class="score-row dim--organisatie">
+                <div class="score-option">
+                  <input type="radio" name="organisatie_score" value="0" id="organisatie_score_0" hidden>
+                  <label for="organisatie_score_0">
+                    <span class="score-num">0</span>
+                    <span class="score-lbl">Speelt geen rol</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="organisatie_score" value="1" id="organisatie_score_1" hidden>
+                  <label for="organisatie_score_1">
+                    <span class="score-num">1</span>
+                    <span class="score-lbl">Speelt mee</span>
+                  </label>
+                </div>
+                <div class="score-option">
+                  <input type="radio" name="organisatie_score" value="2" id="organisatie_score_2" hidden>
+                  <label for="organisatie_score_2">
+                    <span class="score-num">2</span>
+                    <span class="score-lbl">Belangrijke factor</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-error" data-fielderr="organisatie_score" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Geef een score op
+              </div>
+            </div>
+
+            <div class="field-section">
+              <label class="field-label" for="organisatie_opmerking">Opmerking</label>
+              <textarea class="form-textarea" id="organisatie_opmerking" name="organisatie_opmerking" rows="2" placeholder="Optionele toelichting…"></textarea>
+            </div>
+          </div>
+
+          <!-- 6. TCC Analyse -->
+          <div class="tcc-section">
+            <h2 class="tcc-section__title">TCC Analyse</h2>
+
+            <!-- Beslisregel callout (display-only) -->
+            <div class="callout" role="note" aria-label="TCC Beslisregel">
+              <div class="callout__title">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                TCC Beslisregel
+              </div>
+              De dimensie met de <strong>hoogste score (2)</strong> is de primaire oorzaak. Bij een gelijke score bepaalt de volgorde <strong>M → G → T → O</strong>. Een score van 0 sluit die dimensie uit als oorzaak.
+            </div>
+
+            <!-- Kernvraag -->
+            <div class="form-group" style="margin-bottom:var(--sp-5)">
+              <span class="form-label form-label--req" id="kernvraag-label">Kernvraag: wat is de primaire oorzaak?</span>
+              <div class="choice-group" role="radiogroup" aria-labelledby="kernvraag-label">
+                <label class="choice-option">
+                  <input type="radio" name="kernvraag" value="mens">
+                  <span class="choice-label">Mens</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="kernvraag" value="gesprek">
+                  <span class="choice-label">Gesprek</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="kernvraag" value="team">
+                  <span class="choice-label">Team</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="kernvraag" value="organisatie">
+                  <span class="choice-label">Organisatie</span>
+                </label>
+              </div>
+              <div class="form-error" data-fielderr="kernvraag" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Selecteer een optie
+              </div>
+            </div>
+
+            <!-- Eerste signaal -->
+            <div class="form-group" style="margin-bottom:var(--sp-5)">
+              <span class="form-label form-label--req" id="eerste-label">Eerste signaal</span>
+              <div class="choice-group" role="radiogroup" aria-labelledby="eerste-label">
+                <label class="choice-option">
+                  <input type="radio" name="eersteSignaal" value="mens">
+                  <span class="choice-label">Mens</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="eersteSignaal" value="gesprek">
+                  <span class="choice-label">Gesprek</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="eersteSignaal" value="team">
+                  <span class="choice-label">Team</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="eersteSignaal" value="organisatie">
+                  <span class="choice-label">Organisatie</span>
+                </label>
+              </div>
+              <div class="form-error" data-fielderr="eersteSignaal" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Selecteer een optie
+              </div>
+            </div>
+
+            <!-- Voorkombaarheid -->
+            <div class="form-group" style="margin-bottom:var(--sp-5)">
+              <span class="form-label form-label--req" id="voorkom-label">Voorkombaarheid</span>
+              <div class="choice-group" role="radiogroup" aria-labelledby="voorkom-label">
+                <label class="choice-option">
+                  <input type="radio" name="voorkombaarheid" value="ja">
+                  <span class="choice-label">Ja</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="voorkombaarheid" value="waarschijnlijk_wel">
+                  <span class="choice-label">Waarschijnlijk wel</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="voorkombaarheid" value="onzeker">
+                  <span class="choice-label">Onzeker</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="voorkombaarheid" value="waarschijnlijk_niet">
+                  <span class="choice-label">Waarschijnlijk niet</span>
+                </label>
+              </div>
+              <div class="form-error" data-fielderr="voorkombaarheid" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Selecteer een optie
+              </div>
+            </div>
+
+            <!-- Belangrijkste oorzaak -->
+            <div class="form-group">
+              <span class="form-label form-label--req" id="oorzaak-label">Belangrijkste oorzaak</span>
+              <div class="choice-group" role="radiogroup" aria-labelledby="oorzaak-label">
+                <label class="choice-option">
+                  <input type="radio" name="belangrijksteOorzaak" value="mens">
+                  <span class="choice-label">Mens</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="belangrijksteOorzaak" value="gesprek">
+                  <span class="choice-label">Gesprek</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="belangrijksteOorzaak" value="team">
+                  <span class="choice-label">Team</span>
+                </label>
+                <label class="choice-option">
+                  <input type="radio" name="belangrijksteOorzaak" value="organisatie">
+                  <span class="choice-label">Organisatie</span>
+                </label>
+              </div>
+              <div class="form-error" data-fielderr="belangrijksteOorzaak" role="alert" hidden>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                Selecteer een optie
+              </div>
+            </div>
+          </div>
+
+          <div class="submit-section">
+            <button type="submit" class="btn btn--primary btn--lg" id="btn-submit">
+              Opslaan
+            </button>
+          </div>
+
+        </form>
+      </div><!-- /#form-screen -->
+
+      <!-- Thank-you screen -->
+      <div id="thankyou-screen" hidden>
+        <div class="ty-icon" aria-hidden="true">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--c-success)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+        </div>
+        <h2 class="ty-title">Dossier opgeslagen</h2>
+        <p class="ty-sub">De analyse is succesvol opgeslagen. U kunt het dossier terugvinden in het dashboard.</p>
+        <div class="ty-actions">
+          <a class="btn btn--primary btn--lg" href="tcc-dashboard.html">Naar dashboard</a>
+          <a class="btn btn--secondary btn--lg" href="tcc-form.html">Nieuw formulier</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase-client.js"></script>
+  <script>
+  (async () => {
+    'use strict';
+
+    /* ── Auth guard ── */
+    const auth = await SupabaseClient.requireAuth();
+    if (!auth) return;
+
+    /* ── User info in header ── */
+    const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const userName = auth.session.user.email;
+    document.getElementById('header-user').innerHTML = `
+      <span style="font-size:var(--fs-sm);color:var(--c-text-3);font-weight:500">${esc(userName)}</span>
+      <button class="btn btn--ghost btn--sm" id="btn-logout">Uitloggen</button>`;
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+      await SupabaseClient.signOut();
+      window.location.replace('login.html');
+    });
+
+    /* ── Toast ── */
+    function showToast(msg, type = 'error') {
+      const el = document.createElement('div');
+      el.className = `toast toast--${type}`;
+      el.setAttribute('role', 'alert');
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    /* ── Required radio fields ── */
+    const REQUIRED_RADIOS = [
+      'typeVerzuim',
+      'mens_score', 'gesprek_score', 'team_score', 'organisatie_score',
+      'kernvraag', 'eersteSignaal', 'voorkombaarheid', 'belangrijksteOorzaak',
+    ];
+
+    /* ── Collect submission data ── */
+    function collect() {
+      const fd = new FormData(document.getElementById('tcc-form'));
+
+      function signals(name) {
+        return [...document.querySelectorAll(`input[name="${name}"]:checked`)].map(el => el.value);
+      }
+      function radioVal(name) {
+        const el = document.querySelector(`input[name="${name}"]:checked`);
+        return el ? el.value : null;
+      }
+      function scoreNum(name) {
+        const el = document.querySelector(`input[name="${name}"]:checked`);
+        return el !== null ? Number(el.value) : null;
+      }
+
+      return {
+        id:            crypto.randomUUID(),
+        submittedAt:   Date.now(),
+        dossiernummer: (fd.get('dossiernummer') || '').trim(),
+        team:          (fd.get('team') || '').trim(),
+        typeVerzuim:   radioVal('typeVerzuim'),
+        dimensions: {
+          mens:        { signals: signals('mens_signals'),        score: scoreNum('mens_score'),        opmerking: (fd.get('mens_opmerking')        || '').trim() },
+          gesprek:     { signals: signals('gesprek_signals'),     score: scoreNum('gesprek_score'),     opmerking: (fd.get('gesprek_opmerking')     || '').trim() },
+          team:        { signals: signals('team_signals'),        score: scoreNum('team_score'),        opmerking: (fd.get('team_opmerking')        || '').trim() },
+          organisatie: { signals: signals('organisatie_signals'), score: scoreNum('organisatie_score'), opmerking: (fd.get('organisatie_opmerking') || '').trim() },
+        },
+        kernvraag:            radioVal('kernvraag'),
+        eersteSignaal:        radioVal('eersteSignaal'),
+        voorkombaarheid:      radioVal('voorkombaarheid'),
+        belangrijksteOorzaak: radioVal('belangrijksteOorzaak'),
+      };
+    }
+
+    /* ── Validation ── */
+    function validate(data) {
+      let valid = true;
+      const dossierEl  = document.getElementById('dossiernummer');
+      const dossierErr = document.querySelector('[data-fielderr="dossiernummer"]');
+      if (!data.dossiernummer) {
+        dossierErr.hidden = false; dossierEl.classList.add('is-error'); valid = false;
+      } else {
+        dossierErr.hidden = true; dossierEl.classList.remove('is-error');
+      }
+      for (const name of REQUIRED_RADIOS) {
+        const errEl  = document.querySelector(`[data-fielderr="${name}"]`);
+        const hasVal = document.querySelector(`input[name="${name}"]:checked`) !== null;
+        if (!hasVal) { if (errEl) errEl.hidden = false; valid = false; }
+        else          { if (errEl) errEl.hidden = true; }
+      }
+      return valid;
+    }
+
+    /* ── Submit ── */
+    document.getElementById('tcc-form').addEventListener('submit', async e => {
+      e.preventDefault();
+
+      const data = collect();
+      if (!validate(data)) {
+        const firstErr = document.querySelector('.form-error:not([hidden])');
+        if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        showToast('Vul alle verplichte velden in.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit');
+      btn.disabled    = true;
+      btn.textContent = 'Opslaan…';
+
+      try {
+        await SupabaseClient.saveTccSubmission(data);
+        document.getElementById('form-screen').hidden     = true;
+        document.getElementById('thankyou-screen').hidden = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (err) {
+        showToast('Opslaan mislukt: ' + err.message, 'error');
+        btn.disabled    = false;
+        btn.textContent = 'Opslaan';
+      }
+    });
+
+  })();
+  </script>
+</body>
+</html>

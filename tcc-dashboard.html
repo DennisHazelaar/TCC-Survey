@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TCC Dashboard — Dossieranalyse | TCC Verzuimspiegel</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* ── TCC Dashboard styles ── */
+
+    .dash-header {
+      padding: var(--sp-8) 0 var(--sp-6);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--sp-4);
+      flex-wrap: wrap;
+    }
+    .dash-header__left h1 {
+      font-size: var(--fs-3xl);
+      font-weight: 700;
+      letter-spacing: -0.025em;
+      color: var(--c-text);
+      margin-bottom: var(--sp-1);
+    }
+    .dash-header__left p {
+      font-size: var(--fs-sm);
+      color: var(--c-text-3);
+    }
+
+    /* Stats strip */
+    .stats-strip {
+      display: flex;
+      gap: var(--sp-3);
+      flex-wrap: wrap;
+      margin-bottom: var(--sp-6);
+    }
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-full);
+      padding: 8px 16px;
+      font-size: var(--fs-sm);
+      font-weight: 500;
+      color: var(--c-text-2);
+      box-shadow: var(--sh-sm);
+    }
+    .stat-pill svg { color: var(--c-primary); flex-shrink: 0; }
+    .stat-pill strong { color: var(--c-text); }
+
+    /* Dashboard grid */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-5);
+      margin-bottom: var(--sp-5);
+    }
+    @media (max-width: 700px) { .dash-grid { grid-template-columns: 1fr; } }
+
+    .dash-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-5);
+      box-shadow: var(--sh-sm);
+    }
+    .dash-card--full {
+      grid-column: 1 / -1;
+    }
+    .dash-card__title {
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      color: var(--c-text-2);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: var(--sp-4);
+    }
+
+    /* Chart rows */
+    .chart-rows { display: flex; flex-direction: column; gap: var(--sp-3); }
+    .chart-row {
+      display: grid;
+      grid-template-columns: 110px 1fr auto;
+      align-items: center;
+      gap: var(--sp-3);
+    }
+    .chart-row__label {
+      font-size: var(--fs-sm);
+      color: var(--c-text-2);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .chart-track {
+      height: 10px;
+      background: var(--c-border);
+      border-radius: var(--r-full);
+      overflow: hidden;
+    }
+    .chart-fill {
+      height: 100%;
+      border-radius: var(--r-full);
+      transition: width .6s cubic-bezier(.4,0,.2,1);
+      min-width: 4px;
+    }
+    .chart-right {
+      text-align: right;
+      white-space: nowrap;
+      min-width: 52px;
+    }
+    .chart-count {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--c-text);
+    }
+    .chart-pct {
+      font-size: var(--fs-xs);
+      color: var(--c-text-muted);
+      display: block;
+    }
+
+    /* Score bars (0–2 scale) */
+    .score-bar-wrap { display: flex; flex-direction: column; gap: var(--sp-4); }
+    .score-bar-item { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .score-bar-item__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .score-bar-item__label {
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      color: var(--c-text-2);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+    .score-bar-item__val {
+      font-size: var(--fs-sm);
+      font-weight: 700;
+      color: var(--c-text);
+    }
+    .score-track {
+      height: 12px;
+      background: var(--c-border);
+      border-radius: var(--r-full);
+      overflow: hidden;
+    }
+    .score-fill {
+      height: 100%;
+      border-radius: var(--r-full);
+      transition: width .6s cubic-bezier(.4,0,.2,1);
+    }
+
+    /* Dim colour helpers */
+    .dim-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dim-dot--mens        { background: #3b82f6; }
+    .dim-dot--gesprek     { background: #8b5cf6; }
+    .dim-dot--team        { background: #10b981; }
+    .dim-dot--organisatie { background: #f59e0b; }
+
+    .score-fill--mens        { background: #3b82f6; }
+    .score-fill--gesprek     { background: #8b5cf6; }
+    .score-fill--team        { background: #10b981; }
+    .score-fill--organisatie { background: #f59e0b; }
+
+    .chart-fill--mens        { background: #3b82f6; }
+    .chart-fill--gesprek     { background: #8b5cf6; }
+    .chart-fill--team        { background: #10b981; }
+    .chart-fill--organisatie { background: #f59e0b; }
+    .chart-fill--primary     { background: var(--c-primary); }
+    .chart-fill--warning     { background: #f59e0b; }
+
+    /* Top signals */
+    .signal-section { margin-bottom: var(--sp-4); }
+    .signal-section:last-child { margin-bottom: 0; }
+    .signal-dim-label {
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: var(--sp-2);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+    .signal-dim-label--mens        { color: #3b82f6; }
+    .signal-dim-label--gesprek     { color: #8b5cf6; }
+    .signal-dim-label--team        { color: #10b981; }
+    .signal-dim-label--organisatie { color: #f59e0b; }
+    .signal-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .signal-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: var(--fs-sm);
+      color: var(--c-text-2);
+    }
+    .signal-item__count {
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      background: var(--c-surface-2);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-full);
+      padding: 2px 8px;
+      color: var(--c-text-3);
+    }
+
+    /* Cases table */
+    .cases-table-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .cases-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--fs-sm);
+    }
+    .cases-table th {
+      text-align: left;
+      padding: 10px 12px;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--c-text-muted);
+      border-bottom: 1px solid var(--c-border);
+      white-space: nowrap;
+    }
+    .cases-table td {
+      padding: 10px 12px;
+      color: var(--c-text-2);
+      border-bottom: 1px solid var(--c-border);
+      white-space: nowrap;
+    }
+    .cases-table tr:last-child td { border-bottom: none; }
+    .cases-table tbody tr:hover { background: var(--c-surface-2); }
+
+    /* Dim tags in table */
+    .dim-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      border-radius: var(--r-full);
+      text-transform: capitalize;
+    }
+    .dim-tag--mens        { background: #eff6ff; color: #3b82f6; }
+    .dim-tag--gesprek     { background: #f5f3ff; color: #8b5cf6; }
+    .dim-tag--team        { background: #ecfdf5; color: #10b981; }
+    .dim-tag--organisatie { background: #fffbeb; color: #f59e0b; }
+
+    .score-cell {
+      font-weight: 700;
+      text-align: center;
+    }
+    .score-cell--2 { color: var(--c-danger); }
+    .score-cell--1 { color: var(--c-warning); }
+    .score-cell--0 { color: var(--c-text-muted); }
+
+    /* Empty state */
+    #empty-screen {
+      text-align: center;
+      padding: var(--sp-16) var(--sp-4);
+    }
+
+    @media (max-width: 480px) {
+      .dash-header { flex-direction: column; }
+    }
+
+    /* ── Risk zone heatmap ── */
+    .risk-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--fs-sm);
+    }
+    .risk-table th {
+      text-align: center;
+      padding: 10px 14px;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--c-text-muted);
+      border-bottom: 1px solid var(--c-border);
+      white-space: nowrap;
+    }
+    .risk-table th:first-child { text-align: left; }
+    .risk-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--c-border);
+      text-align: center;
+    }
+    .risk-table td:first-child { text-align: left; font-weight: 600; color: var(--c-text); }
+    .risk-table tr:last-child td { border-bottom: none; }
+    .risk-table tbody tr:hover { background: var(--c-surface-2); }
+    .heat-chip {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: var(--r-full);
+      font-weight: 700;
+      font-size: var(--fs-sm);
+    }
+    .heat-low  { background: #ecfdf5; color: #065f46; }
+    .heat-mid  { background: #fef3c7; color: #92400e; }
+    .heat-high { background: #fee2e2; color: #991b1b; }
+    .heat-none { color: var(--c-text-muted); }
+
+    /* ── Cross-tab table ── */
+    .cross-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--fs-sm);
+    }
+    .cross-table th {
+      padding: 10px 16px;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--c-text-muted);
+      border-bottom: 1px solid var(--c-border);
+      white-space: nowrap;
+      text-align: center;
+    }
+    .cross-table th:first-child { text-align: left; }
+    .cross-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--c-border);
+      text-align: center;
+    }
+    .cross-table td:first-child { text-align: left; }
+    .cross-table tr:last-child td { border-bottom: none; }
+    .cross-table tbody tr:hover { background: var(--c-surface-2); }
+    .cross-pct   { font-weight: 700; color: var(--c-text); display: block; }
+    .cross-count { font-size: var(--fs-xs); color: var(--c-text-muted); display: block; }
+
+    /* ── Influence list ── */
+    .influence-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+      list-style: none;
+      padding: 0;
+    }
+    .influence-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--c-surface-2);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-md);
+    }
+    .influence-rank {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--c-primary);
+      color: #fff;
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .influence-body { display: flex; flex-direction: column; gap: 3px; }
+    .influence-dim  { font-size: var(--fs-xs); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+    .influence-dim--mens        { color: #3b82f6; }
+    .influence-dim--gesprek     { color: #8b5cf6; }
+    .influence-dim--team        { color: #10b981; }
+    .influence-dim--organisatie { color: #f59e0b; }
+    .influence-tip  { font-size: var(--fs-sm); color: var(--c-text-2); line-height: 1.4; }
+    .influence-stat { font-size: var(--fs-xs); color: var(--c-text-muted); }
+    .no-data-msg {
+      font-size: var(--fs-sm);
+      color: var(--c-text-muted);
+      font-style: italic;
+      padding: var(--sp-4) 0;
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+      display: flex;
+      align-items: flex-end;
+      gap: var(--sp-3);
+      flex-wrap: wrap;
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-4) var(--sp-5);
+      box-shadow: var(--sh-sm);
+      margin-bottom: var(--sp-5);
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-1);
+      flex: 1;
+      min-width: 140px;
+    }
+    .filter-group label {
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      color: var(--c-text-muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .filter-group .form-input {
+      padding: 8px 10px;
+      font-size: var(--fs-sm);
+    }
+    .filter-count {
+      font-size: var(--fs-xs);
+      color: var(--c-text-muted);
+      white-space: nowrap;
+      padding-bottom: 9px;
+    }
+    .filter-count strong { color: var(--c-text-2); }
+    @media (max-width: 540px) {
+      .filter-bar { flex-direction: column; align-items: stretch; }
+      .filter-count { padding-bottom: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header" role="banner">
+    <div class="container container--wide">
+      <div class="site-header__inner">
+        <a class="site-logo" href="index.html" aria-label="TCC Verzuimspiegel home">
+          <span class="site-logo__mark" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </span>
+          <span class="site-logo__name">TCC Verzuimspiegel</span>
+        </a>
+        <div style="display:flex;align-items:center;gap:var(--sp-3)">
+          <div id="header-user" style="display:flex;align-items:center;gap:var(--sp-2)"></div>
+          <a class="btn btn--primary btn--sm" href="tcc-form.html">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            Nieuw formulier
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-main">
+    <div class="container container--wide">
+
+      <!-- Loading screen -->
+      <div id="loading-screen" hidden>
+        <div class="empty-state" style="padding:var(--sp-16) var(--sp-4)">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--c-border-md)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin:0 auto var(--sp-4)"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <p class="empty-state__title" style="font-weight:500;color:var(--c-text-3)">Dossiers ophalen…</p>
+        </div>
+      </div>
+
+      <!-- Dashboard screen -->
+      <div id="dashboard-screen" hidden>
+
+        <div class="dash-header">
+          <div class="dash-header__left">
+            <h1>TCC Dossieranalyse</h1>
+            <p>Overzicht en analyse van alle ingediende dossiers</p>
+          </div>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="filter-bar" id="filter-bar">
+          <div class="filter-group">
+            <label for="filter-van">Datum van</label>
+            <input class="form-input" type="date" id="filter-van">
+          </div>
+          <div class="filter-group">
+            <label for="filter-tot">Datum tot</label>
+            <input class="form-input" type="date" id="filter-tot">
+          </div>
+          <div class="filter-group">
+            <label for="filter-team">Team</label>
+            <select class="form-input form-select" id="filter-team">
+              <option value="">Alle teams</option>
+            </select>
+          </div>
+          <div class="filter-count" id="filter-count"></div>
+        </div>
+
+        <div class="stats-strip" id="stats-strip"></div>
+
+        <div class="dash-grid">
+
+          <!-- 1. Waar ontstaat verzuim? -->
+          <div class="dash-card">
+            <div class="dash-card__title">Waar ontstaat verzuim?</div>
+            <div class="chart-rows" id="chart-oorzaak"></div>
+          </div>
+
+          <!-- 2. Eerste signalen vóór uitval -->
+          <div class="dash-card">
+            <div class="dash-card__title">Eerste signalen vóór uitval</div>
+            <div class="chart-rows" id="chart-eerste"></div>
+          </div>
+
+          <!-- 3. Risicozones per team — full width -->
+          <div class="dash-card dash-card--full">
+            <div class="dash-card__title">Risicozones per team</div>
+            <div class="cases-table-wrap">
+              <table class="risk-table">
+                <thead>
+                  <tr>
+                    <th>Team</th>
+                    <th style="color:#3b82f6">Mens</th>
+                    <th style="color:#8b5cf6">Gesprek</th>
+                    <th style="color:#10b981">Team</th>
+                    <th style="color:#f59e0b">Organisatie</th>
+                  </tr>
+                </thead>
+                <tbody id="risk-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 4. Had dit voorkomen kunnen worden? -->
+          <div class="dash-card">
+            <div class="dash-card__title">Had dit voorkomen kunnen worden?</div>
+            <div class="chart-rows" id="chart-voorkom"></div>
+          </div>
+
+          <!-- 5. Grootste beïnvloedingskans -->
+          <div class="dash-card">
+            <div class="dash-card__title">Waar ligt de grootste beïnvloedingskans?</div>
+            <ol class="influence-list" id="influence-list"></ol>
+          </div>
+
+          <!-- 6. Oorzaak per verzuimtype — full width -->
+          <div class="dash-card dash-card--full">
+            <div class="dash-card__title">Oorzaak per verzuimtype</div>
+            <div class="cases-table-wrap">
+              <table class="cross-table">
+                <thead id="cross-thead"></thead>
+                <tbody id="cross-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Recente dossiers — full width -->
+          <div class="dash-card dash-card--full">
+            <div class="dash-card__title">Recente dossiers</div>
+            <div class="cases-table-wrap">
+              <table class="cases-table">
+                <thead>
+                  <tr>
+                    <th>Dossier</th>
+                    <th>Type</th>
+                    <th style="text-align:center">M</th>
+                    <th style="text-align:center">G</th>
+                    <th style="text-align:center">T</th>
+                    <th style="text-align:center">O</th>
+                    <th>Oorzaak</th>
+                    <th>Datum</th>
+                  </tr>
+                </thead>
+                <tbody id="cases-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /#dashboard-screen -->
+
+      <!-- Empty screen -->
+      <div id="empty-screen" hidden>
+        <div class="empty-state">
+          <div class="empty-state__icon" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--c-border-md)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+          </div>
+          <p class="empty-state__title">Nog geen dossiers</p>
+          <p class="empty-state__desc">Dien het eerste TCC-dossier in om hier statistieken te zien.</p>
+          <a class="btn btn--primary" href="tcc-form.html" style="margin-top:var(--sp-4)">Nieuw formulier invullen</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <div class="toast-container" id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase-client.js"></script>
+  <script>
+  (async () => {
+    'use strict';
+
+    const DIMS = ['mens', 'gesprek', 'team', 'organisatie'];
+    const DIM_LABELS = { mens: 'Mens', gesprek: 'Gesprek', team: 'Team', organisatie: 'Organisatie' };
+
+    const VOORKOM_LABELS = {
+      ja:                  'Ja',
+      waarschijnlijk_wel:  'Waarschijnlijk wel',
+      onzeker:             'Onzeker',
+      waarschijnlijk_niet: 'Waarschijnlijk niet',
+    };
+    const TYPE_LABELS = { kort: 'Kort', langdurig: 'Langdurig', frequent: 'Frequent' };
+    const INFLUENCE_TIPS = {
+      mens:        'Persoonlijk gesprek en begeleiding van de medewerker',
+      gesprek:     'Verbeter de communicatie tussen leidinggevende en medewerker',
+      team:        'Pak werkdruk en samenwerking aan binnen het team',
+      organisatie: 'Signaleer structurele overbelasting vroegtijdig',
+    };
+
+    const esc = s => String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    /* ── Auth guard ── */
+    const auth = await SupabaseClient.requireAuth();
+    if (!auth) return;
+
+    renderUserInfo(auth.session);
+
+    /* ── Load all data ── */
+    let allSubs = [];
+
+    document.getElementById('loading-screen').hidden = false;
+    try {
+      allSubs = await SupabaseClient.getTccSubmissions();
+    } catch (err) {
+      showToast('Fout bij ophalen van dossiers: ' + err.message, 'error');
+      document.getElementById('loading-screen').hidden = true;
+      return;
+    }
+    document.getElementById('loading-screen').hidden = true;
+
+    if (!allSubs.length) {
+      document.getElementById('empty-screen').hidden = false;
+    } else {
+      document.getElementById('dashboard-screen').hidden = false;
+      initFilters();
+      applyFilters();
+    }
+
+    /* ── Filters ── */
+    function initFilters() {
+      // Populate team dropdown with unique, non-empty team names (sorted A→Z)
+      const teams = [...new Set(allSubs.map(s => s.team).filter(Boolean))].sort((a, b) => a.localeCompare('nl'));
+      const select = document.getElementById('filter-team');
+      teams.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t;
+        opt.textContent = t;
+        select.appendChild(opt);
+      });
+
+      document.getElementById('filter-van').addEventListener('change', applyFilters);
+      document.getElementById('filter-tot').addEventListener('change', applyFilters);
+      select.addEventListener('change', applyFilters);
+    }
+
+    function applyFilters() {
+      const van  = document.getElementById('filter-van').value;   // 'YYYY-MM-DD' or ''
+      const tot  = document.getElementById('filter-tot').value;
+      const team = document.getElementById('filter-team').value;
+
+      const filtered = allSubs.filter(s => {
+        if (van) {
+          const vanMs = new Date(van + 'T00:00:00').getTime();
+          if (s.submittedAt < vanMs) return false;
+        }
+        if (tot) {
+          const totMs = new Date(tot + 'T23:59:59').getTime();
+          if (s.submittedAt > totMs) return false;
+        }
+        // Team: exact match against selected option value
+        if (team && s.team !== team) return false;
+        return true;
+      });
+
+      // Update filter count label
+      const countEl = document.getElementById('filter-count');
+      const isFiltered = van || tot || team;
+      countEl.innerHTML = isFiltered
+        ? `<strong>${filtered.length}</strong> van ${allSubs.length} dossiers`
+        : `${allSubs.length} dossier${allSubs.length !== 1 ? 's' : ''}`;
+
+      renderAll(filtered);
+    }
+
+    function renderAll(subs) {
+      renderStats(subs);
+      renderDistChart('chart-oorzaak', tally(subs, 'belangrijksteOorzaak'), DIM_LABELS, 'dim');
+      renderDistChart('chart-eerste',  tally(subs, 'eersteSignaal'),         DIM_LABELS, 'dim');
+      renderRisicozones(subs);
+      renderDistChart('chart-voorkom', tally(subs, 'voorkombaarheid'), VOORKOM_LABELS, 'primary');
+      renderInfluence(subs);
+      renderCrossTab(subs);
+      renderCasesTable(subs);
+    }
+
+    /* ── Stats strip ── */
+    function renderStats(subs) {
+      const n = subs.length;
+      const avgHtml = DIMS.map(d => {
+        const scores = subs.map(s => s.dimensions?.[d]?.score).filter(v => v !== null && v !== undefined);
+        const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : '—';
+        return `<div class="stat-pill">
+          <span class="dim-dot dim-dot--${d}" aria-hidden="true"></span>
+          ${esc(DIM_LABELS[d])} gem.&nbsp;<strong>${avg}</strong>
+        </div>`;
+      }).join('');
+      document.getElementById('stats-strip').innerHTML = `
+        <div class="stat-pill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          <strong>${n}</strong>&nbsp;dossier${n !== 1 ? 's' : ''}
+        </div>
+        ${avgHtml}`;
+    }
+
+    /* ── Reusable tally + bar chart ── */
+    function tally(subs, field) {
+      const counts = {};
+      subs.forEach(s => {
+        const v = s[field];
+        if (v) counts[v] = (counts[v] || 0) + 1;
+      });
+      return counts;
+    }
+
+    function renderDistChart(containerId, counts, labelMap, fillType) {
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      const keys  = Object.keys(labelMap);
+      const html  = keys.map(k => {
+        const cnt = counts[k] || 0;
+        const pct = total ? Math.round((cnt / total) * 100) : 0;
+        const fillClass = fillType === 'dim' ? `chart-fill--${k}` : 'chart-fill--primary';
+        return `
+          <div class="chart-row">
+            <span class="chart-row__label">${esc(labelMap[k] || k)}</span>
+            <div class="chart-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${labelMap[k] || k}: ${pct}%">
+              <div class="chart-fill ${fillClass}" style="width:${pct}%"></div>
+            </div>
+            <div class="chart-right">
+              <div class="chart-count">${cnt}</div>
+              <span class="chart-pct">${pct}%</span>
+            </div>
+          </div>`;
+      }).join('');
+      document.getElementById(containerId).innerHTML = html || '<p class="no-data-msg">Geen data</p>';
+    }
+
+    /* ── Risicozones per team ── */
+    function renderRisicozones(subs) {
+      // Group submissions by team name
+      const teamMap = {};
+      subs.forEach(s => {
+        const t = (s.team || '').trim() || 'Onbekend';
+        if (!teamMap[t]) teamMap[t] = [];
+        teamMap[t].push(s);
+      });
+
+      const teams = Object.keys(teamMap).sort((a, b) => a.localeCompare(b, 'nl'));
+      if (!teams.length) {
+        document.getElementById('risk-tbody').innerHTML =
+          '<tr><td colspan="5" class="no-data-msg" style="padding:var(--sp-4)">Geen data</td></tr>';
+        return;
+      }
+
+      const rows = teams.map(t => {
+        const tsubs = teamMap[t];
+        const cells = DIMS.map(d => {
+          const scores = tsubs
+            .map(s => s.dimensions?.[d]?.score)
+            .filter(v => v !== null && v !== undefined);
+          if (!scores.length) return '<td><span class="heat-none">—</span></td>';
+          const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+          const cls = avg >= 1.5 ? 'heat-high' : avg >= 0.5 ? 'heat-mid' : 'heat-low';
+          return `<td><span class="heat-chip ${cls}">${avg.toFixed(1)}</span></td>`;
+        }).join('');
+        return `<tr>
+          <td>${esc(t)}<span style="font-size:var(--fs-xs);color:var(--c-text-muted);margin-left:6px">(${tsubs.length})</span></td>
+          ${cells}
+        </tr>`;
+      }).join('');
+
+      document.getElementById('risk-tbody').innerHTML = rows;
+    }
+
+    /* ── Beïnvloedingskans ── */
+    function renderInfluence(subs) {
+      // Rank dimensions by count of dossiers where oorzaak = dim AND voorkombaarheid is positief
+      const ranked = DIMS.map(d => ({
+        dim: d,
+        cnt: subs.filter(s =>
+          s.belangrijksteOorzaak === d &&
+          ['ja', 'waarschijnlijk_wel'].includes(s.voorkombaarheid)
+        ).length,
+      })).filter(x => x.cnt > 0).sort((a, b) => b.cnt - a.cnt).slice(0, 3);
+
+      if (!ranked.length) {
+        document.getElementById('influence-list').innerHTML =
+          '<p class="no-data-msg">Onvoldoende data om beïnvloedingskansen te berekenen.</p>';
+        return;
+      }
+
+      document.getElementById('influence-list').innerHTML = ranked.map((x, i) => `
+        <li class="influence-item">
+          <div class="influence-rank">${i + 1}</div>
+          <div class="influence-body">
+            <span class="influence-dim influence-dim--${x.dim}">${esc(DIM_LABELS[x.dim])}</span>
+            <span class="influence-tip">${esc(INFLUENCE_TIPS[x.dim])}</span>
+            <span class="influence-stat">${x.cnt} dossier${x.cnt !== 1 ? 's' : ''} voorkoombaar</span>
+          </div>
+        </li>`).join('');
+    }
+
+    /* ── Oorzaak × verzuimtype cross-tab ── */
+    function renderCrossTab(subs) {
+      const types = ['kort', 'langdurig', 'frequent'].filter(t =>
+        subs.some(s => s.typeVerzuim === t)
+      );
+
+      if (!types.length) {
+        document.getElementById('cross-thead').innerHTML = '';
+        document.getElementById('cross-tbody').innerHTML =
+          '<tr><td class="no-data-msg" style="padding:var(--sp-4)">Geen data</td></tr>';
+        return;
+      }
+
+      // Count per type and per dim×type combination
+      const typeTotals = Object.fromEntries(types.map(t => [t, 0]));
+      const matrix     = Object.fromEntries(DIMS.map(d => [d, Object.fromEntries(types.map(t => [t, 0]))]));
+
+      subs.forEach(s => {
+        const t = s.typeVerzuim, d = s.belangrijksteOorzaak;
+        if (types.includes(t) && DIMS.includes(d)) {
+          typeTotals[t]++;
+          matrix[d][t]++;
+        }
+      });
+
+      document.getElementById('cross-thead').innerHTML = `
+        <tr>
+          <th>Oorzaak</th>
+          ${types.map(t => `<th>${esc(TYPE_LABELS[t])}</th>`).join('')}
+        </tr>`;
+
+      document.getElementById('cross-tbody').innerHTML = DIMS.map(d => `
+        <tr>
+          <td><span class="dim-tag dim-tag--${d}">${esc(DIM_LABELS[d])}</span></td>
+          ${types.map(t => {
+            const cnt   = matrix[d][t];
+            const total = typeTotals[t];
+            const pct   = total ? Math.round((cnt / total) * 100) : 0;
+            return `<td><span class="cross-pct">${pct}%</span><span class="cross-count">${cnt} dossiers</span></td>`;
+          }).join('')}
+        </tr>`).join('');
+    }
+
+    /* ── Cases table ── */
+    function renderCasesTable(subs) {
+      const rows = subs.slice(0, 20).map(s => {
+        const date       = new Date(s.submittedAt).toLocaleDateString('nl-NL');
+        const typeLabel  = TYPE_LABELS[s.typeVerzuim] || s.typeVerzuim || '—';
+        const oorzaak    = s.belangrijksteOorzaak;
+        const oorzaakTag = oorzaak
+          ? `<span class="dim-tag dim-tag--${oorzaak}">${esc(DIM_LABELS[oorzaak])}</span>`
+          : '—';
+
+        function scoreCell(dim) {
+          const sc = s.dimensions?.[dim]?.score;
+          if (sc === null || sc === undefined) return '<td class="score-cell">—</td>';
+          return `<td class="score-cell score-cell--${sc}">${sc}</td>`;
+        }
+
+        return `
+          <tr>
+            <td><strong>${esc(s.dossiernummer || '—')}</strong></td>
+            <td>${esc(typeLabel)}</td>
+            ${scoreCell('mens')}
+            ${scoreCell('gesprek')}
+            ${scoreCell('team')}
+            ${scoreCell('organisatie')}
+            <td>${oorzaakTag}</td>
+            <td>${esc(date)}</td>
+          </tr>`;
+      }).join('');
+
+      document.getElementById('cases-tbody').innerHTML = rows ||
+        '<tr><td colspan="8" style="text-align:center;color:var(--c-text-muted);padding:var(--sp-6)">Geen dossiers</td></tr>';
+    }
+
+    /* ── User info in header ── */
+    function renderUserInfo(session) {
+      const name = session?.user?.email || '';
+      document.getElementById('header-user').innerHTML = `
+        <span style="font-size:var(--fs-sm);color:var(--c-text-3);font-weight:500">${esc(name)}</span>
+        <button class="btn btn--ghost btn--sm" id="btn-logout">Uitloggen</button>`;
+      document.getElementById('btn-logout').addEventListener('click', async () => {
+        await SupabaseClient.signOut();
+        window.location.replace('login.html');
+      });
+    }
+
+    /* ── Toast ── */
+    function showToast(msg, type = 'error') {
+      const el = document.createElement('div');
+      el.className = `toast toast--${type}`;
+      el.setAttribute('role', 'alert');
+      el.textContent = msg;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+  })();
+  </script>
+</body>
+</html>

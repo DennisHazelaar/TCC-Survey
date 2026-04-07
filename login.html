@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inloggen — TCC Verzuimspiegel</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { display: flex; align-items: center; justify-content: center; min-height: 100dvh; }
+
+    .login-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: var(--r-xl);
+      box-shadow: var(--sh-lg);
+      padding: var(--sp-10) var(--sp-8);
+      width: 100%;
+      max-width: 400px;
+      margin: var(--sp-4);
+    }
+
+    .login-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-2);
+      text-decoration: none;
+      margin-bottom: var(--sp-8);
+    }
+    .login-logo__mark {
+      width: 40px;
+      height: 40px;
+      background: var(--c-primary);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .login-logo__name {
+      font-size: var(--fs-xl);
+      font-weight: 700;
+      color: var(--c-text);
+      letter-spacing: -0.02em;
+    }
+
+    .login-title {
+      font-size: var(--fs-2xl);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--c-text);
+      text-align: center;
+      margin-bottom: var(--sp-2);
+    }
+    .login-sub {
+      font-size: var(--fs-sm);
+      color: var(--c-text-3);
+      text-align: center;
+      margin-bottom: var(--sp-8);
+    }
+
+    .login-form { display: flex; flex-direction: column; gap: var(--sp-4); }
+
+    .login-error {
+      background: var(--c-danger-bg);
+      color: var(--c-danger);
+      border-radius: var(--r-md);
+      padding: 10px var(--sp-4);
+      font-size: var(--fs-sm);
+      font-weight: 500;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+
+    <a class="login-logo" href="index.html">
+      <div class="login-logo__mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      </div>
+      <span class="login-logo__name">TCC Verzuimspiegel</span>
+    </a>
+
+    <h1 class="login-title">Inloggen</h1>
+    <p class="login-sub">Log in met je account om door te gaan.</p>
+
+    <form class="login-form" id="login-form" novalidate>
+      <div class="form-group">
+        <label class="form-label form-label--req" for="email">E-mailadres</label>
+        <input class="form-input" type="email" id="email" name="email"
+          placeholder="naam@organisatie.nl" autocomplete="email" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label form-label--req" for="password">Wachtwoord</label>
+        <input class="form-input" type="password" id="password" name="password"
+          autocomplete="current-password" required>
+      </div>
+      <div id="login-error" class="login-error" hidden></div>
+      <button type="submit" class="btn btn--primary btn--lg" id="btn-login"
+        style="margin-top:var(--sp-2)">
+        Inloggen
+      </button>
+    </form>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="supabase-client.js"></script>
+  <script>
+  (async () => {
+    'use strict';
+
+    // Already logged in → skip login page
+    const session = await SupabaseClient.getSession();
+    if (session) { redirectAfterLogin(); return; }
+
+    const form    = document.getElementById('login-form');
+    const errorEl = document.getElementById('login-error');
+    const btn     = document.getElementById('btn-login');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      errorEl.hidden = true;
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      if (!email || !password) {
+        showError('Vul je e-mailadres en wachtwoord in.');
+        return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = 'Bezig…';
+
+      try {
+        await SupabaseClient.signIn(email, password);
+        redirectAfterLogin();
+      } catch {
+        showError('Inloggen mislukt. Controleer je e-mailadres en wachtwoord.');
+        btn.disabled    = false;
+        btn.textContent = 'Inloggen';
+      }
+    });
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.hidden      = false;
+    }
+
+    function redirectAfterLogin() {
+      const params   = new URLSearchParams(window.location.search);
+      const redirect = params.get('redirect');
+      window.location.replace(redirect || 'tcc-form.html');
+    }
+  })();
+  </script>
+</body>
+</html>
